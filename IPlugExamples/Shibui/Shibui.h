@@ -7,6 +7,7 @@
 #include "Oscillator.h"
 #include "MIDIReceiver.h"
 #include "EnvelopeGenerator.h"
+#include "Filter.h"
 
 class Shibui : public IPlug
 {
@@ -35,8 +36,23 @@ private:
   IControl* mVirtualKeyboard;
   void processVirtualKeyboard();
   EnvelopeGenerator mEnvelopeGenerator;
-  inline void onNoteOn(const int noteNumber, const int velocity) { mEnvelopeGenerator.enterStage(EnvelopeGenerator::ENVELOPE_STAGE_ATTACK); };
-  inline void onNoteOff(const int noteNumber, const int velocity) { mEnvelopeGenerator.enterStage(EnvelopeGenerator::ENVELOPE_STAGE_RELEASE); };
+  Filter mFilter;
+  EnvelopeGenerator mFilterEnvelopeGenerator;
+  double filterEnvelopeAmount;
+  Oscillator mLFO;
+  double lfoFilterModAmount;
+
+  void CreateParams();
+  void CreateGraphics();
+
+  inline void onNoteOn(const int noteNumber, const int velocity) {
+	  mEnvelopeGenerator.enterStage(EnvelopeGenerator::ENVELOPE_STAGE_ATTACK);
+	  mFilterEnvelopeGenerator.enterStage(EnvelopeGenerator::ENVELOPE_STAGE_ATTACK);
+  };
+  inline void onNoteOff(const int noteNumber, const int velocity) {
+	  mEnvelopeGenerator.enterStage(EnvelopeGenerator::ENVELOPE_STAGE_RELEASE);
+	  mFilterEnvelopeGenerator.enterStage(EnvelopeGenerator::ENVELOPE_STAGE_RELEASE);
+  };
   inline void onBeganEnvelopeCycle() { mOscillator.setMuted(false); }
   inline void onFinishedEnvelopeCycle() { mOscillator.setMuted(true); }
 };

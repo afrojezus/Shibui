@@ -9,72 +9,184 @@
 #include <algorithm>
 
 const int kNumPrograms = 5;
+const double parameterStep = 0.001;
 
 enum EParams
 {
-	mWaveform = 0,
-	mAttack,
-	mDecay,
-	mSustain,
-	mRelease,
+	// Oscillator Section:
+	mOsc1Waveform = 0,
+	mOsc1PitchMod,
+	mOsc2Waveform,
+	mOsc2PitchMod,
+	mOscMix,
+	// Filter Section:
+	mFilterMode,
+	mFilterCutoff,
+	mFilterResonance,
+	mFilterLfoAmount,
+	mFilterEnvAmount,
+	// LFO:
+	mLFOWaveform,
+	mLFOFrequency,
+	// Volume Envelope:
+	mVolumeEnvAttack,
+	mVolumeEnvDecay,
+	mVolumeEnvSustain,
+	mVolumeEnvRelease,
+	// Filter Envelope:
+	mFilterEnvAttack,
+	mFilterEnvDecay,
+	mFilterEnvSustain,
+	mFilterEnvRelease,
 	kNumParams
 };
 
+// God fucking bless.
+const parameterProperties_struct parameterProperties[kNumParams] = {
+  {.name = "Osc 1 Waveform",.x = 30,.y = 75},
+  {.name = "Osc 1 Pitch Mod",.x = 69,.y = 61,.defaultVal = 0.0,.minVal = 0.0,.maxVal = 1.0},
+  {.name = "Osc 2 Waveform",.x = 203,.y = 75},
+  {.name = "Osc 2 Pitch Mod",.x = 242,.y = 61,.defaultVal = 0.0,.minVal = 0.0,.maxVal = 1.0},
+  {.name = "Osc Mix",.x = 130,.y = 61,.defaultVal = 0.5,.minVal = 0.0,.maxVal = 1.0},
+  {.name = "Filter Mode",.x = 30,.y = 188},
+  {.name = "Filter Cutoff",.x = 69,.y = 174,.defaultVal = 0.99,.minVal = 0.0,.maxVal = 0.99},
+  {.name = "Filter Resonance",.x = 124,.y = 174,.defaultVal = 0.0,.minVal = 0.0,.maxVal = 1.0},
+  {.name = "Filter LFO Amount",.x = 179,.y = 174,.defaultVal = 0.0,.minVal = 0.0,.maxVal = 1.0},
+  {.name = "Filter Envelope Amount",.x = 234,.y = 174,.defaultVal = 0.0,.minVal = -1.0,.maxVal = 1.0},
+  {.name = "LFO Waveform",.x = 30,.y = 298},
+  {.name = "LFO Frequency",.x = 69,.y = 284,.defaultVal = 6.0,.minVal = 0.01,.maxVal = 30.0},
+  {.name = "Volume Env Attack",.x = 323,.y = 61,.defaultVal = 0.01,.minVal = 0.01,.maxVal = 10.0},
+  {.name = "Volume Env Decay",.x = 378,.y = 61,.defaultVal = 0.5,.minVal = 0.01,.maxVal = 15.0},
+  {.name = "Volume Env Sustain",.x = 433,.y = 61,.defaultVal = 0.1,.minVal = 0.001,.maxVal = 1.0},
+  {.name = "Volume Env Release",.x = 488,.y = 61,.defaultVal = 1.0,.minVal = 0.01,.maxVal = 15.0},
+  {.name = "Filter Env Attack",.x = 323,.y = 174,.defaultVal = 0.01,.minVal = 0.01,.maxVal = 10.0},
+  {.name = "Filter Env Decay",.x = 378,.y = 174,.defaultVal = 0.5,.minVal = 0.01,.maxVal = 15.0},
+  {.name = "Filter Env Sustain",.x = 433,.y = 174,.defaultVal = 0.1,.minVal = 0.001,.maxVal = 1.0},
+  {.name = "Filter Env Release",.x = 488,.y = 174,.defaultVal = 1.0,.minVal = 0.01,.maxVal = 15.0}
+};
+
+typedef struct {
+	const char* name;
+	const int x;
+	const int y;
+	const double defaultVal;
+	const double minVal;
+	const double maxVal;
+} parameterProperties_struct;
+
 enum ELayout
 {
-  kWidth = GUI_WIDTH,
-  kHeight = GUI_HEIGHT,
-  kKeybX = 1,
-  kKeybY = 230
+	kWidth = GUI_WIDTH,
+	kHeight = GUI_HEIGHT,
+	kKeybX = 62,
+	kKeybY = 425
 };
 
 Shibui::Shibui(IPlugInstanceInfo instanceInfo)
-  :	IPLUG_CTOR(kNumParams, kNumPrograms, instanceInfo), lastVirtualKeyboardNoteNumber(virtualKeyboardMinimumNoteNumber - 1)
+  :	IPLUG_CTOR(kNumParams, kNumPrograms, instanceInfo), lastVirtualKeyboardNoteNumber(virtualKeyboardMinimumNoteNumber - 1), filterEnvelopeAmount(0.0), lfoFilterModAmount(0.1)
 {
   TRACE;
-  IGraphics* pGraphics = MakeGraphics(this, kWidth, kHeight);
-  pGraphics->AttachBackground(BG_ID, BG_FN);
-
-  IBitmap whiteKeyImage = pGraphics->LoadIBitmap(WHITE_KEY_ID, WHITE_KEY_FN, 6);
-  IBitmap blackKeyImage = pGraphics->LoadIBitmap(BLACK_KEY_ID, BLACK_KEY_FN);
-
-  //                            C#     D#          F#      G#      A#
-  int keyCoordinates[12] = { 0, 7, 12, 20, 24, 36, 43, 48, 56, 60, 69, 72 };
-  mVirtualKeyboard = new IKeyboardControl(this, kKeybX, kKeybY, virtualKeyboardMinimumNoteNumber, /* octaves: */ 5, &whiteKeyImage, &blackKeyImage, keyCoordinates);
-
-  pGraphics->AttachControl(mVirtualKeyboard);
-  // Waveform switch
-  GetParam(mWaveform)->InitEnum("Waveform", OSCILLATOR_MODE_SINE, kNumOscillatorModes);
-  GetParam(mWaveform)->SetDisplayText(0, "Sine");
-  IBitmap waveformBitmap = pGraphics->LoadIBitmap(WAVEFORM_ID, WAVEFORM_FN, 4);
-  pGraphics->AttachControl(new ISwitchControl(this, 24, 53, mWaveform, &waveformBitmap));
-
-  // Knob bitmap for ADSR
-  IBitmap knobBitmap = pGraphics->LoadIBitmap(KNOB_ID, KNOB_FN, 64);
-  // Attack knob:
-  GetParam(mAttack)->InitDouble("Attack", 0.01, 0.01, 10.0, 0.001);
-  GetParam(mAttack)->SetShape(3);
-  pGraphics->AttachControl(new IKnobMultiControl(this, 95, 34, mAttack, &knobBitmap));
-  // Decay knob:
-  GetParam(mDecay)->InitDouble("Decay", 0.5, 0.01, 15.0, 0.001);
-  GetParam(mDecay)->SetShape(3);
-  pGraphics->AttachControl(new IKnobMultiControl(this, 177, 34, mDecay, &knobBitmap));
-  // Sustain knob:
-  GetParam(mSustain)->InitDouble("Sustain", 0.1, 0.001, 1.0, 0.001);
-  GetParam(mSustain)->SetShape(2);
-  pGraphics->AttachControl(new IKnobMultiControl(this, 259, 34, mSustain, &knobBitmap));
-  // Release knob:
-  GetParam(mRelease)->InitDouble("Release", 1.0, 0.001, 15.0, 0.001);
-  GetParam(mRelease)->SetShape(3);
-  pGraphics->AttachControl(new IKnobMultiControl(this, 341, 34, mRelease, &knobBitmap));
-  AttachGraphics(pGraphics);
-
+  CreateParams();
+  CreateGraphics();
   CreatePresets();
 
   mMIDIReceiver.noteOn.Connect(this, &Shibui::onNoteOn);
   mMIDIReceiver.noteOff.Connect(this, &Shibui::onNoteOff);
   mEnvelopeGenerator.beganEnvelopeCycle.Connect(this, &Shibui::onBeganEnvelopeCycle);
   mEnvelopeGenerator.finishedEnvelopeCycle.Connect(this, &Shibui::onFinishedEnvelopeCycle);
+}
+
+void Shibui::CreateParams() {
+	for (int i = 0; i < kNumParams; i++) {
+		IParam* param = GetParam(i);
+		const parameterProperties_struct& properties = parameterProperties[i];
+		switch (i) {
+			// Enum Parameters:
+		case mOsc1Waveform:
+		case mOsc2Waveform:
+			param->InitEnum(properties.name,
+				Oscillator::OSCILLATOR_MODE_SAW,
+				Oscillator::kNumOscillatorModes);
+			// For VST3:
+			param->SetDisplayText(0, properties.name);
+			break;
+		case mLFOWaveform:
+			param->InitEnum(properties.name,
+				Oscillator::OSCILLATOR_MODE_TRIANGLE,
+				Oscillator::kNumOscillatorModes);
+			// For VST3:
+			param->SetDisplayText(0, properties.name);
+			break;
+		case mFilterMode:
+			param->InitEnum(properties.name,
+				Filter::FILTER_MODE_LOWPASS,
+				Filter::kNumFilterModes);
+			break;
+			// Double Parameters:
+		default:
+			param->InitDouble(properties.name,
+				properties.defaultVal,
+				properties.minVal,
+				properties.maxVal,
+				parameterStep);
+			break;
+		}
+	}
+	GetParam(mFilterCutoff)->SetShape(2);
+	GetParam(mVolumeEnvAttack)->SetShape(3);
+	GetParam(mFilterEnvAttack)->SetShape(3);
+	GetParam(mVolumeEnvDecay)->SetShape(3);
+	GetParam(mFilterEnvDecay)->SetShape(3);
+	GetParam(mVolumeEnvSustain)->SetShape(2);
+	GetParam(mFilterEnvSustain)->SetShape(2);
+	GetParam(mVolumeEnvRelease)->SetShape(3);
+	GetParam(mFilterEnvRelease)->SetShape(3);
+	for (int i = 0; i < kNumParams; i++) {
+		OnParamChange(i);
+	}
+}
+
+void Shibui::CreateGraphics() {
+	IGraphics* pGraphics = MakeGraphics(this, kWidth, kHeight);
+	pGraphics->AttachBackground(BG_ID, BG_FN);
+
+	IBitmap whiteKeyImage = pGraphics->LoadIBitmap(WHITE_KEY_ID, WHITE_KEY_FN, 6);
+	IBitmap blackKeyImage = pGraphics->LoadIBitmap(BLACK_KEY_ID, BLACK_KEY_FN);
+	//                            C#     D#          F#      G#      A#
+	int keyCoordinates[12] = { 0, 10, 17, 30, 35, 52, 61, 68, 79, 85, 97, 102 };
+	mVirtualKeyboard = new IKeyboardControl(this, kKeybX, kKeybY, virtualKeyboardMinimumNoteNumber, /* octaves: */ 4, &whiteKeyImage, &blackKeyImage, keyCoordinates);
+	pGraphics->AttachControl(mVirtualKeyboard);
+
+	IBitmap waveformBitmap = pGraphics->LoadIBitmap(WAVEFORM_ID, WAVEFORM_FN, 4);
+	IBitmap filterModeBitmap = pGraphics->LoadIBitmap(FILTERMODE_ID, FILTERMODE_FN, 3);
+	IBitmap knobBitmap = pGraphics->LoadIBitmap(KNOB_ID, KNOB_FN, 64);
+
+	for (int i = 0; i < kNumParams; i++) {
+		const parameterProperties_struct& properties = parameterProperties[i];
+		IControl* control;
+		IBitmap* graphic;
+		switch (i) {
+			// Switches:
+		case mOsc1Waveform:
+		case mOsc2Waveform:
+		case mLFOWaveform:
+			graphic = &waveformBitmap;
+			control = new ISwitchControl(this, properties.x, properties.y, i, graphic);
+			break;
+		case mFilterMode:
+			graphic = &filterModeBitmap;
+			control = new ISwitchControl(this, properties.x, properties.y, i, graphic);
+			break;
+			// Knobs:
+		default:
+			graphic = &knobBitmap;
+			control = new IKnobMultiControl(this, properties.x, properties.y, i, graphic);
+			break;
+		}
+		pGraphics->AttachControl(control);
+	}
+
+	AttachGraphics(pGraphics);
 }
 
 void Shibui::ProcessMidiMsg(IMidiMsg* pMsg) {
@@ -96,8 +208,10 @@ void Shibui::ProcessDoubleReplacing(double** inputs, double** outputs, int nFram
 	for (int i = 0; i < nFrames; ++i) {
 		mMIDIReceiver.advance();
 		int velocity = mMIDIReceiver.getLastVelocity();
+		double lfoFilterModulation = mLFO.nextSample() * lfoFilterModAmount;
 		mOscillator.setFrequency(mMIDIReceiver.getLastFrequency());
-		leftOutput[i] = rightOutput[i] = mOscillator.nextSample() * mEnvelopeGenerator.nextSample() * velocity / 127.0;
+		mFilter.setCutoffMod((mFilterEnvelopeGenerator.nextSample() * filterEnvelopeAmount) + lfoFilterModulation);
+		leftOutput[i] = rightOutput[i] = mFilter.process(mOscillator.nextSample() * mEnvelopeGenerator.nextSample() * velocity / 127.0);
 	}
 
 	mMIDIReceiver.Flush(nFrames);
@@ -109,22 +223,14 @@ void Shibui::Reset()
   IMutexLock lock(this);
   mOscillator.setSampleRate(GetSampleRate());
   mEnvelopeGenerator.setSampleRate(GetSampleRate());
+  mFilterEnvelopeGenerator.setSampleRate(GetSampleRate());
+  mLFO.setSampleRate(GetSampleRate());
 }
 
 void Shibui::OnParamChange(int paramIdx)
 {
   IMutexLock lock(this);
-  switch (paramIdx) {
-  case mWaveform:
-	  mOscillator.setMode(static_cast<OscillatorMode>(GetParam(mWaveform)->Int()));
-	  break;
-  case mAttack:
-  case mDecay:
-  case mSustain:
-  case mRelease:
-	  mEnvelopeGenerator.setStageValue(static_cast<EnvelopeGenerator::EnvelopeStage>(paramIdx), GetParam(paramIdx)->Value());
-	  break;
-  }
+
 }
 
 void Shibui::CreatePresets() {

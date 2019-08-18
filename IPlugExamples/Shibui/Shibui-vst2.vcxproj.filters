@@ -8,6 +8,7 @@
     <ClCompile Include="Oscillator.cpp" />
     <ClCompile Include="MIDIReceiver.cpp" />
     <ClCompile Include="EnvelopeGenerator.cpp" />
+    <ClCompile Include="Filter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shibui.h" />
@@ -20,6 +21,7 @@
     <ClInclude Include="EnvelopeGenerator.h" />
     <ClInclude Include="GallantSignal.h" />
     <ClInclude Include="Delegate.h" />
+    <ClInclude Include="Filter.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Shibui.rc" />
