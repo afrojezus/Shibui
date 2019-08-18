@@ -4,10 +4,8 @@
 #pragma warning( suppress : 4101 4129 )
 #include "IPlug_include_in_plug_hdr.h"
 
-#include "Oscillator.h"
+#include "VoiceManager.h"
 #include "MIDIReceiver.h"
-#include "EnvelopeGenerator.h"
-#include "Filter.h"
 
 class Shibui : public IPlug
 {
@@ -29,32 +27,15 @@ public:
   int lastVirtualKeyboardNoteNumber;
 
 private:
+	VoiceManager voiceManager;
   double mFrequency;
   void CreatePresets();
-  Oscillator mOscillator;
   MIDIReceiver mMIDIReceiver;
   IControl* mVirtualKeyboard;
   void processVirtualKeyboard();
-  EnvelopeGenerator mEnvelopeGenerator;
-  Filter mFilter;
-  EnvelopeGenerator mFilterEnvelopeGenerator;
-  double filterEnvelopeAmount;
-  Oscillator mLFO;
-  double lfoFilterModAmount;
 
   void CreateParams();
   void CreateGraphics();
-
-  inline void onNoteOn(const int noteNumber, const int velocity) {
-	  mEnvelopeGenerator.enterStage(EnvelopeGenerator::ENVELOPE_STAGE_ATTACK);
-	  mFilterEnvelopeGenerator.enterStage(EnvelopeGenerator::ENVELOPE_STAGE_ATTACK);
-  };
-  inline void onNoteOff(const int noteNumber, const int velocity) {
-	  mEnvelopeGenerator.enterStage(EnvelopeGenerator::ENVELOPE_STAGE_RELEASE);
-	  mFilterEnvelopeGenerator.enterStage(EnvelopeGenerator::ENVELOPE_STAGE_RELEASE);
-  };
-  inline void onBeganEnvelopeCycle() { mOscillator.setMuted(false); }
-  inline void onFinishedEnvelopeCycle() { mOscillator.setMuted(true); }
 };
 
 #endif

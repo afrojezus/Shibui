@@ -1,4 +1,5 @@
 #include "Oscillator.h"
+double Oscillator::mSampleRate = 44100.0;
 
 void Oscillator::setMode(OscillatorMode mode) {
 	mOscillatorMode = mode;
@@ -63,18 +64,39 @@ void Oscillator::generate(double* buffer, int nFrames) {
 }
 
 double Oscillator::nextSample() {
-	double value = 0.0;
-	if (isMuted) return value;
+	double value = naiveWaveformForMode(mOscillatorMode);
+	mPhase += mPhaseIncrement;
+	while (mPhase >= twoPI) {
+		mPhase -= twoPI;
+	}
+	return value;
+}
 
-	switch (mOscillatorMode) {
+void Oscillator::updateIncrement() {
+	double pitchModAsFrequency = pow(2.0, fabs(mPitchMod) * 14.0) - 1;
+	if (mPitchMod < 0) {
+		pitchModAsFrequency = -pitchModAsFrequency;
+	}
+	double calculatedFrequency = fmin(fmax(mFrequency + pitchModAsFrequency, 0), mSampleRate / 2.0);
+	mPhaseIncrement = calculatedFrequency * 2 * mPI / mSampleRate;
+}
+
+void Oscillator::setPitchMod(double amount) {
+	mPitchMod = amount;
+	updateIncrement();
+}
+
+double Oscillator::naiveWaveformForMode(OscillatorMode mode) {
+	double value;
+	switch (mode) {
 	case OSCILLATOR_MODE_SINE:
 		value = sin(mPhase);
 		break;
 	case OSCILLATOR_MODE_SAW:
-		value = 1.0 - (2.0 * mPhase / twoPI);
+		value = (2.0 * mPhase / twoPI) - 1.0;
 		break;
 	case OSCILLATOR_MODE_SQUARE:
-		if (mPhase <= mPI) {
+		if (mPhase < mPI) {
 			value = 1.0;
 		}
 		else {
@@ -85,14 +107,8 @@ double Oscillator::nextSample() {
 		value = -1.0 + (2.0 * mPhase / twoPI);
 		value = 2.0 * (fabs(value) - 0.5);
 		break;
-	}
-	mPhase += mPhaseIncrement;
-	while (mPhase >= twoPI) {
-		mPhase -= twoPI;
+	default:
+		break;
 	}
 	return value;
-}
-
-void Oscillator::updateIncrement() {
-	mPhaseIncrement = mFrequency * 2 * mPI / mSampleRate;
 }

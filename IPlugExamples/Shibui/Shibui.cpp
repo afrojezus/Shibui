@@ -7,6 +7,7 @@
 
 #include <math.h>
 #include <algorithm>
+#include <functional>
 
 const int kNumPrograms = 5;
 const double parameterStep = 0.001;
@@ -41,30 +42,6 @@ enum EParams
 	kNumParams
 };
 
-// God fucking bless.
-const parameterProperties_struct parameterProperties[kNumParams] = {
-  {.name = "Osc 1 Waveform",.x = 30,.y = 75},
-  {.name = "Osc 1 Pitch Mod",.x = 69,.y = 61,.defaultVal = 0.0,.minVal = 0.0,.maxVal = 1.0},
-  {.name = "Osc 2 Waveform",.x = 203,.y = 75},
-  {.name = "Osc 2 Pitch Mod",.x = 242,.y = 61,.defaultVal = 0.0,.minVal = 0.0,.maxVal = 1.0},
-  {.name = "Osc Mix",.x = 130,.y = 61,.defaultVal = 0.5,.minVal = 0.0,.maxVal = 1.0},
-  {.name = "Filter Mode",.x = 30,.y = 188},
-  {.name = "Filter Cutoff",.x = 69,.y = 174,.defaultVal = 0.99,.minVal = 0.0,.maxVal = 0.99},
-  {.name = "Filter Resonance",.x = 124,.y = 174,.defaultVal = 0.0,.minVal = 0.0,.maxVal = 1.0},
-  {.name = "Filter LFO Amount",.x = 179,.y = 174,.defaultVal = 0.0,.minVal = 0.0,.maxVal = 1.0},
-  {.name = "Filter Envelope Amount",.x = 234,.y = 174,.defaultVal = 0.0,.minVal = -1.0,.maxVal = 1.0},
-  {.name = "LFO Waveform",.x = 30,.y = 298},
-  {.name = "LFO Frequency",.x = 69,.y = 284,.defaultVal = 6.0,.minVal = 0.01,.maxVal = 30.0},
-  {.name = "Volume Env Attack",.x = 323,.y = 61,.defaultVal = 0.01,.minVal = 0.01,.maxVal = 10.0},
-  {.name = "Volume Env Decay",.x = 378,.y = 61,.defaultVal = 0.5,.minVal = 0.01,.maxVal = 15.0},
-  {.name = "Volume Env Sustain",.x = 433,.y = 61,.defaultVal = 0.1,.minVal = 0.001,.maxVal = 1.0},
-  {.name = "Volume Env Release",.x = 488,.y = 61,.defaultVal = 1.0,.minVal = 0.01,.maxVal = 15.0},
-  {.name = "Filter Env Attack",.x = 323,.y = 174,.defaultVal = 0.01,.minVal = 0.01,.maxVal = 10.0},
-  {.name = "Filter Env Decay",.x = 378,.y = 174,.defaultVal = 0.5,.minVal = 0.01,.maxVal = 15.0},
-  {.name = "Filter Env Sustain",.x = 433,.y = 174,.defaultVal = 0.1,.minVal = 0.001,.maxVal = 1.0},
-  {.name = "Filter Env Release",.x = 488,.y = 174,.defaultVal = 1.0,.minVal = 0.01,.maxVal = 15.0}
-};
-
 typedef struct {
 	const char* name;
 	const int x;
@@ -73,6 +50,52 @@ typedef struct {
 	const double minVal;
 	const double maxVal;
 } parameterProperties_struct;
+
+// God fucking bless.
+parameterProperties_struct parameterProperties[kNumParams] = 
+{
+
+{ "Osc 1 Waveform", 30, 75, 0, 0, 0 },
+
+{ "Osc 1 Pitch Mod", 69, 61, 0.0, 0.0, 1.0 },
+
+{ "Osc 2 Waveform", 203, 75, 0, 0, 0 },
+
+{ "Osc 2 Pitch Mod", 242, 61, 0.0, 0.0, 1.0 },
+
+{ "Osc Mix", 130, 61, 0.5, 0.0, 1.0 },
+
+{ "Filter Mode", 30, 188, 0, 0, 0 },
+
+{ "Filter Cutoff", 69, 174, 0.99, 0.0, 0.99 },
+
+{ "Filter Resonance", 124, 174, 0.0, 0.0, 1.0 },
+
+{ "Filter LFO Amount", 179, 174, 0.0, 0.0, 1.0 },
+
+{ "Filter Envelope Amount", 234, 174, 0.0, -1.0, 1.0 },
+
+{ "LFO Waveform", 30, 298, 0, 0, 0 },
+
+{ "LFO Frequency", 69, 284, 6.0, 0.01, 30.0 },
+
+{ "Volume Env Attack", 323, 61, 0.01, 0.01, 10.0 },
+
+{ "Volume Env Decay", 378, 61, 0.5, 0.01, 15.0 },
+
+{ "Volume Env Sustain", 433, 61, 0.1, 0.001, 1.0 },
+
+{ "Volume Env Release", 488, 61, 1.0, 0.01, 15.0 },
+
+{ "Filter Env Attack", 323, 174, 0.01, 0.01, 10.0 },
+
+{ "Filter Env Decay", 378, 174, 0.5, 0.01, 15.0 },
+
+{ "Filter Env Sustain", 433, 174, 0.1, 0.001, 1.0 },
+
+{ "Filter Env Release", 488, 174, 1.0, 0.01, 15.0 },
+
+};
 
 enum ELayout
 {
@@ -83,17 +106,15 @@ enum ELayout
 };
 
 Shibui::Shibui(IPlugInstanceInfo instanceInfo)
-  :	IPLUG_CTOR(kNumParams, kNumPrograms, instanceInfo), lastVirtualKeyboardNoteNumber(virtualKeyboardMinimumNoteNumber - 1), filterEnvelopeAmount(0.0), lfoFilterModAmount(0.1)
+  :	IPLUG_CTOR(kNumParams, kNumPrograms, instanceInfo), lastVirtualKeyboardNoteNumber(virtualKeyboardMinimumNoteNumber - 1)
 {
   TRACE;
   CreateParams();
   CreateGraphics();
   CreatePresets();
 
-  mMIDIReceiver.noteOn.Connect(this, &Shibui::onNoteOn);
-  mMIDIReceiver.noteOff.Connect(this, &Shibui::onNoteOff);
-  mEnvelopeGenerator.beganEnvelopeCycle.Connect(this, &Shibui::onBeganEnvelopeCycle);
-  mEnvelopeGenerator.finishedEnvelopeCycle.Connect(this, &Shibui::onFinishedEnvelopeCycle);
+  mMIDIReceiver.noteOn.Connect(&voiceManager, &VoiceManager::onNoteOn);
+  mMIDIReceiver.noteOff.Connect(&voiceManager, &VoiceManager::onNoteOff);
 }
 
 void Shibui::CreateParams() {
@@ -202,16 +223,10 @@ void Shibui::ProcessDoubleReplacing(double** inputs, double** outputs, int nFram
 
 	double* leftOutput = outputs[0];
 	double* rightOutput = outputs[1];
-
 	processVirtualKeyboard();
-
 	for (int i = 0; i < nFrames; ++i) {
 		mMIDIReceiver.advance();
-		int velocity = mMIDIReceiver.getLastVelocity();
-		double lfoFilterModulation = mLFO.nextSample() * lfoFilterModAmount;
-		mOscillator.setFrequency(mMIDIReceiver.getLastFrequency());
-		mFilter.setCutoffMod((mFilterEnvelopeGenerator.nextSample() * filterEnvelopeAmount) + lfoFilterModulation);
-		leftOutput[i] = rightOutput[i] = mFilter.process(mOscillator.nextSample() * mEnvelopeGenerator.nextSample() * velocity / 127.0);
+		leftOutput[i] = rightOutput[i] = voiceManager.nextSample();
 	}
 
 	mMIDIReceiver.Flush(nFrames);
@@ -221,16 +236,89 @@ void Shibui::Reset()
 {
   TRACE;
   IMutexLock lock(this);
-  mOscillator.setSampleRate(GetSampleRate());
-  mEnvelopeGenerator.setSampleRate(GetSampleRate());
-  mFilterEnvelopeGenerator.setSampleRate(GetSampleRate());
-  mLFO.setSampleRate(GetSampleRate());
+  double sampleRate = GetSampleRate();
+  voiceManager.setSampleRate(sampleRate);
 }
 
 void Shibui::OnParamChange(int paramIdx)
 {
   IMutexLock lock(this);
-
+  IParam* param = GetParam(paramIdx);
+  if (paramIdx == mLFOWaveform) {
+	  voiceManager.setLFOMode(static_cast<Oscillator::OscillatorMode>(param->Int()));
+  }
+  else if (paramIdx == mLFOFrequency) {
+	  voiceManager.setLFOFrequency(param->Value());
+  }
+  else
+  {
+	  using std::tr1::placeholders::_1;
+	  using std::tr1::bind;
+	  VoiceManager::VoiceChangerFunction changer;
+	  switch (paramIdx) {
+	  case mOsc1Waveform:
+		  changer = bind(&VoiceManager::setOscillatorMode,
+			  _1,
+			  1,
+			  static_cast<Oscillator::OscillatorMode>(param->Int()));
+		  break;
+	  case mOsc1PitchMod:
+		  changer = bind(&VoiceManager::setOscillatorPitchMod, _1, 1, param->Value());
+		  break;
+	  case mOsc2Waveform:
+		  changer = bind(&VoiceManager::setOscillatorMode, _1, 2, static_cast<Oscillator::OscillatorMode>(param->Int()));
+		  break;
+	  case mOsc2PitchMod:
+		  changer = bind(&VoiceManager::setOscillatorPitchMod, _1, 2, param->Value());
+		  break;
+	  case mOscMix:
+		  changer = bind(&VoiceManager::setOscillatorMix, _1, param->Value());
+		  break;
+		  // Filter Section:
+	  case mFilterMode:
+		  changer = bind(&VoiceManager::setFilterMode, _1, static_cast<Filter::FilterMode>(param->Int()));
+		  break;
+	  case mFilterCutoff:
+		  changer = bind(&VoiceManager::setFilterCutoff, _1, param->Value());
+		  break;
+	  case mFilterResonance:
+		  changer = bind(&VoiceManager::setFilterResonance, _1, param->Value());
+		  break;
+	  case mFilterLfoAmount:
+		  changer = bind(&VoiceManager::setFilterLFOAmount, _1, param->Value());
+		  break;
+	  case mFilterEnvAmount:
+		  changer = bind(&VoiceManager::setFilterEnvAmount, _1, param->Value());
+		  break;
+		  // Volume Envelope:
+	  case mVolumeEnvAttack:
+		  changer = bind(&VoiceManager::setVolumeEnvelopeStageValue, _1, EnvelopeGenerator::ENVELOPE_STAGE_ATTACK, param->Value());
+		  break;
+	  case mVolumeEnvDecay:
+		  changer = bind(&VoiceManager::setVolumeEnvelopeStageValue, _1, EnvelopeGenerator::ENVELOPE_STAGE_DECAY, param->Value());
+		  break;
+	  case mVolumeEnvSustain:
+		  changer = bind(&VoiceManager::setVolumeEnvelopeStageValue, _1, EnvelopeGenerator::ENVELOPE_STAGE_SUSTAIN, param->Value());
+		  break;
+	  case mVolumeEnvRelease:
+		  changer = bind(&VoiceManager::setVolumeEnvelopeStageValue, _1, EnvelopeGenerator::ENVELOPE_STAGE_RELEASE, param->Value());
+		  break;
+		  // Filter Envelope:
+	  case mFilterEnvAttack:
+		  changer = bind(&VoiceManager::setFilterEnvelopeStageValue, _1, EnvelopeGenerator::ENVELOPE_STAGE_ATTACK, param->Value());
+		  break;
+	  case mFilterEnvDecay:
+		  changer = bind(&VoiceManager::setFilterEnvelopeStageValue, _1, EnvelopeGenerator::ENVELOPE_STAGE_DECAY, param->Value());
+		  break;
+	  case mFilterEnvSustain:
+		  changer = bind(&VoiceManager::setFilterEnvelopeStageValue, _1, EnvelopeGenerator::ENVELOPE_STAGE_SUSTAIN, param->Value());
+		  break;
+	  case mFilterEnvRelease:
+		  changer = bind(&VoiceManager::setFilterEnvelopeStageValue, _1, EnvelopeGenerator::ENVELOPE_STAGE_RELEASE, param->Value());
+		  break;
+	  }
+	  voiceManager.changeAllVoices(changer);
+  }
 }
 
 void Shibui::CreatePresets() {

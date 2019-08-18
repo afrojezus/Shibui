@@ -24,7 +24,9 @@ public:
 	void setSampleRate(double sampleRate);
 	void generate(double* buffer, int nFrames);
 	inline void setMuted(bool muted) { isMuted = muted; }
-	double nextSample();
+	virtual double nextSample();
+	void reset() { mPhase = 0.0; }
+	void setPitchMod(double amount);
 	Oscillator() :
 		mOscillatorMode(OSCILLATOR_MODE_SINE),
 		mPI(2 * acos(0.0)),
@@ -32,18 +34,20 @@ public:
 		isMuted(true),
 		mFrequency(440.0),
 		mPhase(0.0),
-		mSampleRate(44100.0) {
+		mPitchMod(0.0) {
 		updateIncrement();
 	};
-private:
+protected:
 	OscillatorMode mOscillatorMode;
 	const double mPI;
 	const double twoPI;
 	bool isMuted;
 	double mFrequency;
 	double mPhase;
-	double mSampleRate;
+	static double mSampleRate;
 	double mPhaseIncrement;
 	void updateIncrement();
+	double mPitchMod;
+	double naiveWaveformForMode(OscillatorMode mode);
 };
 

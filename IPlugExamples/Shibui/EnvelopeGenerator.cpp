@@ -1,4 +1,5 @@
 #include "EnvelopeGenerator.h"
+double EnvelopeGenerator::sampleRate = 44100.0;
 
 double EnvelopeGenerator::nextSample() {
 	if (currentStage != ENVELOPE_STAGE_OFF &&

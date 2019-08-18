@@ -9,6 +9,9 @@
     <ClCompile Include="MIDIReceiver.cpp" />
     <ClCompile Include="EnvelopeGenerator.cpp" />
     <ClCompile Include="Filter.cpp" />
+    <ClCompile Include="Voice.cpp" />
+    <ClCompile Include="VoiceManager.cpp" />
+    <ClCompile Include="PolyBLEPOscillator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shibui.h" />
@@ -22,6 +25,9 @@
     <ClInclude Include="GallantSignal.h" />
     <ClInclude Include="Delegate.h" />
     <ClInclude Include="Filter.h" />
+    <ClInclude Include="Voice.h" />
+    <ClInclude Include="VoiceManager.h" />
+    <ClInclude Include="PolyBLEPOscillator.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Shibui.rc" />
